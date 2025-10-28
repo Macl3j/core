@@ -2,7 +2,8 @@
  * API Client for Leave Management System
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Dynamically determine API base URL
+const API_BASE_URL = `${window.location.origin}/api`;
 
 class APIClient {
     constructor() {
@@ -24,6 +25,7 @@ class APIClient {
     async handleResponse(response) {
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
+            console.error('API Error:', response.status, error);
             throw new Error(error.detail || 'Request failed');
         }
 
@@ -52,6 +54,7 @@ class APIClient {
 
     // Authentication endpoints
     async login(username, password) {
+        console.log('Attempting login to:', `${API_BASE_URL}/auth/login`);
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: this.getHeaders(false),
@@ -60,6 +63,7 @@ class APIClient {
 
         const data = await this.handleResponse(response);
         this.setToken(data.access_token);
+        console.log('Login successful');
         return data;
     }
 
