@@ -56,6 +56,33 @@
             </div>
         </div>
 
+        <!-- Export and Reports -->
+        <div class="card">
+            <div class="card-header">📥 Eksport i raporty</div>
+            <div class="card-body">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="exportMyCalendar()">
+                        📅 Eksportuj do kalendarza
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportMySummaryPDF()">
+                        📄 Moje podsumowanie (PDF)
+                    </button>
+                    <button class="btn btn-secondary" id="export-team-calendar-btn" onclick="exportTeamCalendar()" style="display: none;">
+                        📅 Kalendarz zespołu
+                    </button>
+                    <button class="btn btn-secondary" id="export-csv-btn" onclick="exportLeavesCsv()" style="display: none;">
+                        📊 Eksportuj do CSV
+                    </button>
+                    <button class="btn btn-secondary" id="export-excel-btn" onclick="exportLeavesExcel()" style="display: none;">
+                        📊 Eksportuj do Excel
+                    </button>
+                    <button class="btn btn-secondary" id="export-pdf-btn" onclick="exportLeavesPdf()" style="display: none;">
+                        📄 Raport PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Leave Requests Table -->
         <div class="card">
             <div class="card-header flex-between">
@@ -584,9 +611,50 @@
             }
         }
 
+        // Export functions
+        function exportMyCalendar() {
+            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/leaves/export/calendar`;
+            window.open(url, '_blank');
+        }
+
+        function exportMySummaryPDF() {
+            const year = new Date().getFullYear();
+            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/my-summary/pdf?year=${year}`;
+            window.open(url, '_blank');
+        }
+
+        function exportTeamCalendar() {
+            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/leaves/export/team-calendar`;
+            window.open(url, '_blank');
+        }
+
+        function exportLeavesCsv() {
+            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/csv`;
+            window.open(url, '_blank');
+        }
+
+        function exportLeavesExcel() {
+            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/excel`;
+            window.open(url, '_blank');
+        }
+
+        function exportLeavesPdf() {
+            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/pdf`;
+            window.open(url, '_blank');
+        }
+
         // Initialize
         async function init() {
             await loadUserInfo();
+
+            // Show/hide export buttons for managers/admins
+            if (currentUser && (currentUser.role === 'manager' || currentUser.role === 'admin')) {
+                document.getElementById('export-team-calendar-btn').style.display = 'inline-block';
+                document.getElementById('export-csv-btn').style.display = 'inline-block';
+                document.getElementById('export-excel-btn').style.display = 'inline-block';
+                document.getElementById('export-pdf-btn').style.display = 'inline-block';
+            }
+
             await loadUserStats();
             await loadAdminStats();
             await loadMyRequests();

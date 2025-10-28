@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from ..database import get_db
@@ -14,6 +15,12 @@ from ..schemas import (
     DashboardStats,
 )
 from ..auth import get_current_user, require_role
+from ..email import (
+    send_leave_request_notification,
+    send_leave_approved_notification,
+    send_leave_rejected_notification,
+)
+from ..calendar_export import generate_leave_calendar, generate_single_leave_calendar
 
 router = APIRouter(prefix="/leaves", tags=["Leave Requests"])
 
@@ -123,6 +130,22 @@ def create_leave_request(
     db.add(new_request)
     db.commit()
     db.refresh(new_request)
+
+    # Send email notification to manager
+    if current_user.manager_id:
+        manager = db.query(User).filter(User.id == current_user.manager_id).first()
+        if manager:
+            send_leave_request_notification(
+                manager_email=manager.email,
+                manager_name=manager.full_name,
+                employee_name=current_user.full_name,
+                leave_type=leave_data.leave_type.value,
+                start_date=leave_data.start_date,
+                end_date=leave_data.end_date,
+                days_count=days_count,
+                reason=leave_data.reason,
+                created_at=datetime.utcnow()
+            )
 
     return new_request
 
@@ -365,6 +388,31 @@ def approve_leave_request(
     db.commit()
     db.refresh(request)
 
+    # Send email notification to employee
+    if approval_data.approved:
+        send_leave_approved_notification(
+            employee_email=request.user.email,
+            employee_name=request.user.full_name,
+            approver_name=current_user.full_name,
+            leave_type=request.leave_type.value,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            days_count=request.days_count,
+            approved_at=request.approved_at,
+            request_id=request.id
+        )
+    else:
+        send_leave_rejected_notification(
+            employee_email=request.user.email,
+            employee_name=request.user.full_name,
+            approver_name=current_user.full_name,
+            leave_type=request.leave_type.value,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            days_count=request.days_count,
+            rejection_reason=request.rejection_reason
+        )
+
     return request
 
 
@@ -401,3 +449,167 @@ def cancel_leave_request(
     db.commit()
 
     return None
+
+
+@router.get("/{request_id}/calendar")
+def export_leave_to_calendar(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Export a single leave request to iCalendar format."""
+    request = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
+
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Leave request not found"
+        )
+
+    # Check permissions
+    is_owner = request.user_id == current_user.id
+    is_manager_of_requester = current_user.role == UserRole.MANAGER and request.user.manager_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN
+
+    if not (is_owner or is_manager_of_requester or is_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to export this request"
+        )
+
+    # Generate iCalendar
+    ical_content = generate_single_leave_calendar(request)
+
+    # Return as downloadable file
+    filename = f"urlop_{request.user.username}_{request.start_date.strftime('%Y%m%d')}.ics"
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+@router.get("/export/calendar")
+def export_all_leaves_to_calendar(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Export all user's leave requests to iCalendar format."""
+    query = db.query(LeaveRequest).filter(LeaveRequest.user_id == current_user.id)
+
+    # Apply date filters if provided
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            query = query.filter(LeaveRequest.start_date >= start_dt)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid start_date format. Use ISO format (YYYY-MM-DD)"
+            )
+
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+            query = query.filter(LeaveRequest.end_date <= end_dt)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid end_date format. Use ISO format (YYYY-MM-DD)"
+            )
+
+    # Get only approved and pending leaves
+    query = query.filter(LeaveRequest.status.in_([LeaveStatus.APPROVED, LeaveStatus.PENDING]))
+
+    requests = query.order_by(LeaveRequest.start_date).all()
+
+    if not requests:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No leave requests found"
+        )
+
+    # Generate iCalendar
+    ical_content = generate_leave_calendar(requests, f"Urlopy - {current_user.full_name}")
+
+    # Return as downloadable file
+    filename = f"urlopy_{current_user.username}.ics"
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+@router.get("/export/team-calendar")
+def export_team_leaves_to_calendar(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.MANAGER, UserRole.ADMIN))
+):
+    """Export team's leave requests to iCalendar format (managers and admins only)."""
+    query = db.query(LeaveRequest)
+
+    # Apply role-based filtering
+    if current_user.role == UserRole.MANAGER:
+        # Managers see their subordinates' requests
+        subordinate_ids = [sub.id for sub in current_user.subordinates]
+        subordinate_ids.append(current_user.id)  # Include manager's own leaves
+        query = query.filter(LeaveRequest.user_id.in_(subordinate_ids))
+    # Admins see all requests (no filter)
+
+    # Apply date filters if provided
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            query = query.filter(LeaveRequest.start_date >= start_dt)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid start_date format. Use ISO format (YYYY-MM-DD)"
+            )
+
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+            query = query.filter(LeaveRequest.end_date <= end_dt)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid end_date format. Use ISO format (YYYY-MM-DD)"
+            )
+
+    # Get only approved leaves
+    query = query.filter(LeaveRequest.status == LeaveStatus.APPROVED)
+
+    requests = query.order_by(LeaveRequest.start_date).all()
+
+    if not requests:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No leave requests found"
+        )
+
+    # Generate iCalendar
+    calendar_name = f"Urlopy zespołu - {current_user.full_name}" if current_user.role == UserRole.MANAGER else "Urlopy - wszystkie"
+    ical_content = generate_leave_calendar(requests, calendar_name)
+
+    # Return as downloadable file
+    filename = f"urlopy_zespol_{datetime.now().strftime('%Y%m%d')}.ics"
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )

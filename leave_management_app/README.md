@@ -10,18 +10,26 @@ Nowoczesna aplikacja webowa do zarządzania urlopami w organizacji, zbudowana z 
 - ✅ Anulowanie wniosków oczekujących
 - ✅ Dashboard z statystykami (pozostałe dni urlopu, zwolnienia)
 - ✅ Monitorowanie statusu wniosków
+- ✅ **Powiadomienia email** o zatwierdzeniu/odrzuceniu wniosku
+- ✅ **Eksport do kalendarza** (format iCal/ICS) - integracja z Google Calendar, Outlook, Apple Calendar
+- ✅ **Raport osobisty PDF** - podsumowanie urlopów za rok
 
 ### Dla managerów:
 - ✅ Zatwierdzanie/odrzucanie wniosków podwładnych
 - ✅ Przeglądanie wszystkich wniosków zespołu
 - ✅ Dashboard z statystykami zespołu
 - ✅ Zarządzanie podwładnymi
+- ✅ **Powiadomienia email** o nowych wnioskach od podwładnych
+- ✅ **Eksport kalendarza zespołu** - przeglądaj urlopy całego zespołu
+- ✅ **Raporty zespołu** - CSV, Excel, PDF z danymi zespołu
 
 ### Dla administratorów:
 - ✅ Pełny dostęp do wszystkich wniosków
 - ✅ Zarządzanie użytkownikami
 - ✅ Globalne statystyki organizacji
 - ✅ Konfiguracja limitów urlopowych
+- ✅ **Raporty organizacji** - eksport wszystkich danych do CSV/Excel/PDF
+- ✅ **Kalendarz globalny** - urlopy całej organizacji
 
 ## 🛠️ Technologie
 
@@ -31,6 +39,9 @@ Nowoczesna aplikacja webowa do zarządzania urlopami w organizacji, zbudowana z 
 - Pydantic - walidacja danych
 - JWT - bezpieczna autentykacja
 - Uvicorn - serwer ASGI
+- iCalendar - generowanie plików kalendarza
+- ReportLab & OpenPyXL - generowanie raportów PDF/Excel
+- SMTP - wysyłanie powiadomień email
 
 **Frontend:**
 - Vanilla JavaScript (bez frameworków)
@@ -39,6 +50,10 @@ Nowoczesna aplikacja webowa do zarządzania urlopami w organizacji, zbudowana z 
 
 **Baza danych:**
 - SQLite (domyślnie, gotowe do zmiany na PostgreSQL/MySQL)
+
+**Integracje:**
+- Kalendarz (iCal/ICS) - Google Calendar, Outlook, Apple Calendar
+- Email (SMTP) - Gmail, Outlook, SendGrid, itp.
 
 ## 📋 Wymagania
 
@@ -196,6 +211,121 @@ pip install pymysql
 DATABASE_URL=mysql+pymysql://user:password@localhost:3306/leave_management
 ```
 
+## 📧 Konfiguracja powiadomień email
+
+System może wysyłać automatyczne powiadomienia email o:
+- Nowych wnioskach urlopowych (do managerów)
+- Zatwierdzeniu wniosku (do pracownika)
+- Odrzuceniu wniosku (do pracownika)
+
+### Włączanie powiadomień email
+
+1. Skopiuj plik `.env.example` do `.env`:
+```bash
+cp backend/.env.example backend/.env
+```
+
+2. Edytuj `.env` i skonfiguruj SMTP:
+
+```env
+EMAIL_ENABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=twoj-email@gmail.com
+SMTP_PASSWORD=twoje-haslo-aplikacji
+SMTP_FROM_EMAIL=noreply@twojafirma.com
+SMTP_FROM_NAME=System Zarządzania Urlopami
+```
+
+### Konfiguracja dla popularnych dostawców
+
+**Gmail:**
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=twoj-email@gmail.com
+SMTP_PASSWORD=haslo-aplikacji
+```
+*Uwaga: Gmail wymaga "hasła aplikacji" zamiast zwykłego hasła. Wygeneruj je tutaj: https://support.google.com/accounts/answer/185833*
+
+**Outlook/Hotmail:**
+```env
+SMTP_HOST=smtp-mail.outlook.com
+SMTP_PORT=587
+SMTP_USERNAME=twoj-email@outlook.com
+SMTP_PASSWORD=twoje-haslo
+```
+
+**Office365:**
+```env
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_USERNAME=twoj-email@twojafirma.com
+SMTP_PASSWORD=twoje-haslo
+```
+
+**SendGrid (zalecane dla produkcji):**
+```env
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=twoj-api-key-z-sendgrid
+```
+
+### Testowanie powiadomień
+
+Powiadomienia są wysyłane automatycznie gdy:
+1. Pracownik składa nowy wniosek → email do managera
+2. Manager zatwierdza wniosek → email do pracownika
+3. Manager odrzuca wniosek → email do pracownika
+
+Jeśli `EMAIL_ENABLED=false`, system będzie tylko logował informacje o emailach w konsoli bez ich wysyłania.
+
+## 📅 Eksport do kalendarza
+
+System umożliwia eksport urlopów do formatu iCal/ICS, który można zaimportować do:
+
+### Google Calendar
+1. Kliknij "Eksportuj do kalendarza" w dashboardzie
+2. Pobierz plik .ics
+3. Otwórz Google Calendar
+4. Kliknij "+ Inny kalendarz" → "Importuj"
+5. Wybierz pobrany plik .ics
+
+### Outlook
+1. Pobierz plik .ics
+2. Otwórz Outlook
+3. Plik → Otwórz i eksportuj → Importuj/Eksportuj
+4. Wybierz "Importuj plik iCalendar (.ics)"
+
+### Apple Calendar
+1. Pobierz plik .ics
+2. Kliknij dwukrotnie na plik
+3. Kalendarz automatycznie zaimportuje wydarzenia
+
+## 📊 Raporty i eksport danych
+
+System oferuje różne formaty eksportu danych:
+
+### Dla wszystkich użytkowników:
+- **Eksport do kalendarza (ICS)** - własne urlopy
+- **Podsumowanie PDF** - raport roczny z wykorzystaniem urlopów
+
+### Dla managerów i administratorów:
+- **CSV** - dane tabelaryczne do Excel/arkuszy kalkulacyjnych
+- **Excel (XLSX)** - sformatowane raporty z kolorami statusów
+- **PDF** - profesjonalne raporty z podsumowaniami
+- **Kalendarz zespołu** - urlopy całego zespołu w formacie ICS
+
+### Generowanie raportów:
+
+1. Przejdź do sekcji "Eksport i raporty" w dashboardzie
+2. Wybierz odpowiedni format:
+   - **CSV** - najlepszydo dalszej obróbki danych
+   - **Excel** - dla ładnych tabel z formatowaniem
+   - **PDF** - dla prezentacji i archiwizacji
+3. Raport zostanie pobrany automatycznie
+
 ## 📝 Użytkowanie
 
 ### Rejestracja nowego użytkownika
@@ -300,15 +430,23 @@ W razie problemów lub pytań:
 
 ## ✨ Przyszłe funkcjonalności
 
+Zaimplementowane w najnowszej wersji:
+- [x] Integracja z kalendarzem (Google Calendar, Outlook, Apple Calendar) - format iCal/ICS
+- [x] Powiadomienia email (SMTP)
+- [x] Export danych do Excel/CSV/PDF
+- [x] Raporty dla managerów i administratorów
+
 Planowane rozszerzenia:
-- [ ] Integracja z kalendarzem (Google Calendar, Outlook)
-- [ ] Powiadomienia email
-- [ ] Export danych do Excel/PDF
-- [ ] Zaawansowane raporty i wykresy
+- [ ] Zaawansowane raporty i wykresy (wizualizacje)
 - [ ] Multi-tenant support (wiele organizacji)
-- [ ] API webhooks
-- [ ] Moduł planowania urlopów zespołu
-- [ ] Historia zmian wniosków
+- [ ] API webhooks dla integracji z innymi systemami
+- [ ] Moduł planowania urlopów zespołu (konflikt urlopów)
+- [ ] Historia zmian wniosków (audit log)
+- [ ] Dwuetapowa akceptacja (manager + HR)
+- [ ] Dni wolne i święta (automatyczne wykluczanie)
+- [ ] Limity zespołowe (max X osób na urlop jednocześnie)
+- [ ] Integracja z Active Directory / LDAP
+- [ ] Aplikacja mobilna (PWA)
 
 ---
 

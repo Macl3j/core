@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from .database import init_db, engine, get_db
-from .routers import auth, users, leaves
+from .routers import auth, users, leaves, reports
 from .models import User, UserRole
 from .auth import get_password_hash
 from sqlalchemy.orm import Session
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(leaves.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
 
 
 @app.on_event("startup")
