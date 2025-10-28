@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leave_management_app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/leave_management.db
+      - SECRET_KEY=${SECRET_KEY:-change-this-secret-key-in-production}
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-noreply@leavemanagement.com}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Leave Management System}
+    volumes:
+      # Montuj bazę danych jako volume dla persystencji
+      - leave_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Opcjonalnie: PostgreSQL zamiast SQLite dla produkcji
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: leave_management_db
+  #   environment:
+  #     - POSTGRES_DB=leave_management
+  #     - POSTGRES_USER=leave_user
+  #     - POSTGRES_PASSWORD=change_this_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U leave_user"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  leave_data:
+    driver: local
+  # postgres_data:
+  #   driver: local

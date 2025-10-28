@@ -59,8 +59,41 @@ Nowoczesna aplikacja webowa do zarządzania urlopami w organizacji, zbudowana z 
 
 - Python 3.8 lub nowszy
 - pip (menedżer pakietów Python)
+- Alternatywnie: Docker (zalecane dla produkcji)
 
-## 🚀 Instalacja i uruchomienie
+## 🚀 Szybki Start
+
+### Metoda 1: Automatyczna instalacja (Zalecane)
+
+**Linux / macOS:**
+```bash
+cd leave_management_app
+chmod +x install.sh start.sh
+./install.sh
+./start.sh
+```
+
+**Windows:**
+```cmd
+cd leave_management_app
+install.bat
+start.bat
+```
+
+### Metoda 2: Docker (Zalecane dla produkcji)
+
+```bash
+cd leave_management_app
+docker-compose up -d
+```
+
+Aplikacja będzie dostępna pod: **http://localhost:8000**
+
+📖 **Szczegółowe instrukcje wdrożenia:** Zobacz [DEPLOYMENT.md](DEPLOYMENT.md)
+
+---
+
+## 🚀 Instalacja i uruchomienie (Manualna)
 
 ### 1. Sklonuj repozytorium (lub przejdź do katalogu)
 
