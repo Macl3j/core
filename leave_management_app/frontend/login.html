@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logowanie - System Zarządzania Urlopami</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-title">System Zarządzania Urlopami</h1>
+                <p class="login-subtitle">Zaloguj się do swojego konta</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username" class="form-label">Nazwa użytkownika</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        class="form-input"
+                        required
+                        autocomplete="username"
+                        autofocus
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Hasło</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="form-input"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="login-btn">
+                    Zaloguj się
+                </button>
+            </form>
+
+            <div style="margin-top: 1.5rem; text-align: center; color: #6b7280; font-size: 0.875rem;">
+                <p>Domyślne konto administratora:</p>
+                <p style="margin-top: 0.5rem;">
+                    <strong>Username:</strong> admin<br>
+                    <strong>Password:</strong> admin123
+                </p>
+            </div>
+
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; text-align: center;">
+                <p style="color: #6b7280; font-size: 0.875rem;">
+                    Nie masz konta?
+                    <a href="#" id="register-link" style="color: #4f46e5; text-decoration: none; font-weight: 500;">
+                        Zarejestruj się
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Rejestracja nowego użytkownika</h2>
+                <button class="modal-close" id="close-register">&times;</button>
+            </div>
+
+            <div id="register-alert-container"></div>
+
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="reg-username" class="form-label">Nazwa użytkownika *</label>
+                    <input
+                        type="text"
+                        id="reg-username"
+                        name="username"
+                        class="form-input"
+                        required
+                        minlength="3"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email" class="form-label">Email *</label>
+                    <input
+                        type="email"
+                        id="reg-email"
+                        name="email"
+                        class="form-input"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-full-name" class="form-label">Imię i nazwisko *</label>
+                    <input
+                        type="text"
+                        id="reg-full-name"
+                        name="full_name"
+                        class="form-input"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password" class="form-label">Hasło *</label>
+                    <input
+                        type="password"
+                        id="reg-password"
+                        name="password"
+                        class="form-input"
+                        required
+                        minlength="6"
+                    >
+                    <small style="color: #6b7280;">Minimum 6 znaków</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-department" class="form-label">Dział</label>
+                    <input
+                        type="text"
+                        id="reg-department"
+                        name="department"
+                        class="form-input"
+                    >
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" id="cancel-register" style="flex: 1;">
+                        Anuluj
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="register-btn" style="flex: 1;">
+                        Zarejestruj
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        // Check if already logged in
+        if (api.isAuthenticated()) {
+            window.location.href = '/dashboard';
+        }
+
+        // Show alert
+        function showAlert(message, type = 'error', containerId = 'alert-container') {
+            const container = document.getElementById(containerId);
+            const alertClass = type === 'error' ? 'alert-error' : 'alert-success';
+            container.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Login form handler
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('login-btn');
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logowanie...';
+
+            try {
+                await api.login(username, password);
+                showAlert('Zalogowano pomyślnie!', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 500);
+            } catch (error) {
+                showAlert(error.message || 'Błąd logowania. Sprawdź dane i spróbuj ponownie.');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Zaloguj się';
+            }
+        });
+
+        // Registration modal
+        const registerModal = document.getElementById('register-modal');
+        const registerLink = document.getElementById('register-link');
+        const closeRegister = document.getElementById('close-register');
+        const cancelRegister = document.getElementById('cancel-register');
+
+        registerLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerModal.classList.add('active');
+        });
+
+        closeRegister.addEventListener('click', () => {
+            registerModal.classList.remove('active');
+        });
+
+        cancelRegister.addEventListener('click', () => {
+            registerModal.classList.remove('active');
+        });
+
+        // Close modal on outside click
+        registerModal.addEventListener('click', (e) => {
+            if (e.target === registerModal) {
+                registerModal.classList.remove('active');
+            }
+        });
+
+        // Registration form handler
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                username: document.getElementById('reg-username').value,
+                email: document.getElementById('reg-email').value,
+                full_name: document.getElementById('reg-full-name').value,
+                password: document.getElementById('reg-password').value,
+                department: document.getElementById('reg-department').value || null,
+                role: 'employee',
+            };
+
+            const registerBtn = document.getElementById('register-btn');
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Rejestrowanie...';
+
+            try {
+                await api.register(formData);
+                showAlert('Rejestracja zakończona pomyślnie! Możesz się teraz zalogować.', 'success');
+                registerModal.classList.remove('active');
+                document.getElementById('register-form').reset();
+                document.getElementById('username').value = formData.username;
+            } catch (error) {
+                showAlert(error.message || 'Błąd rejestracji. Spróbuj ponownie.', 'error', 'register-alert-container');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Zarejestruj';
+            }
+        });
+    </script>
+</body>
+</html>

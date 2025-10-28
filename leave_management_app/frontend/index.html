@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Zarządzania Urlopami</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-title">System Zarządzania Urlopami</h1>
+                <p class="login-subtitle">Przekierowywanie...</p>
+            </div>
+            <div class="text-center">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        // Redirect to appropriate page
+        if (api.isAuthenticated()) {
+            window.location.href = '/dashboard';
+        } else {
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+</html>

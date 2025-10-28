@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - System Zarządzania Urlopami</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="/dashboard" class="navbar-brand">System Zarządzania Urlopami</a>
+            <div class="navbar-menu">
+                <a href="/dashboard" class="navbar-link active">Dashboard</a>
+                <div class="user-info">
+                    <span class="user-badge" id="user-role"></span>
+                    <span id="user-name"></span>
+                    <button class="btn btn-secondary btn-small" onclick="logout()">Wyloguj</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="alert-container"></div>
+
+        <!-- User Stats -->
+        <div id="user-stats" class="stats-grid">
+            <!-- Stats will be loaded here -->
+        </div>
+
+        <!-- Manager/Admin Stats -->
+        <div id="admin-stats" class="stats-grid hidden">
+            <!-- Admin stats will be loaded here -->
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">Szybkie akcje</div>
+            <div class="card-body">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="openNewLeaveModal()">
+                        ➕ Nowy wniosek urlopowy
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadMyRequests()">
+                        📋 Moje wnioski
+                    </button>
+                    <button class="btn btn-secondary" id="pending-btn" onclick="loadPendingRequests()" style="display: none;">
+                        ⏳ Wnioski do zatwierdzenia
+                    </button>
+                    <button class="btn btn-secondary" id="all-requests-btn" onclick="loadAllRequests()" style="display: none;">
+                        📊 Wszystkie wnioski
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Requests Table -->
+        <div class="card">
+            <div class="card-header flex-between">
+                <span id="table-title">Moje wnioski urlopowe</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="status-filter" class="form-select" style="width: auto;" onchange="applyFilter()">
+                        <option value="">Wszystkie statusy</option>
+                        <option value="pending">Oczekujące</option>
+                        <option value="approved">Zatwierdzone</option>
+                        <option value="rejected">Odrzucone</option>
+                        <option value="cancelled">Anulowane</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="loading" class="text-center">
+                    <div class="spinner"></div>
+                    <p>Ładowanie...</p>
+                </div>
+                <div id="requests-container" class="hidden">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Typ</th>
+                                <th>Od</th>
+                                <th>Do</th>
+                                <th>Dni</th>
+                                <th>Status</th>
+                                <th>Utworzono</th>
+                                <th>Akcje</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requests-tbody">
+                            <!-- Requests will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="no-requests" class="hidden text-center" style="padding: 2rem; color: #6b7280;">
+                    <p>Brak wniosków do wyświetlenia</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Leave Request Modal -->
+    <div id="new-leave-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Nowy wniosek urlopowy</h2>
+                <button class="modal-close" onclick="closeNewLeaveModal()">&times;</button>
+            </div>
+
+            <div id="leave-alert-container"></div>
+
+            <form id="new-leave-form">
+                <div class="form-group">
+                    <label for="leave-type" class="form-label">Typ urlopu *</label>
+                    <select id="leave-type" name="leave_type" class="form-select" required>
+                        <option value="annual">Urlop wypoczynkowy</option>
+                        <option value="sick">Zwolnienie lekarskie</option>
+                        <option value="unpaid">Urlop bezpłatny</option>
+                        <option value="maternity">Urlop macierzyński</option>
+                        <option value="paternity">Urlop ojcowski</option>
+                        <option value="compassionate">Urlop okolicznościowy</option>
+                        <option value="other">Inny</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="start-date" class="form-label">Data rozpoczęcia *</label>
+                    <input type="date" id="start-date" name="start_date" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="end-date" class="form-label">Data zakończenia *</label>
+                    <input type="date" id="end-date" name="end_date" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reason" class="form-label">Powód (opcjonalnie)</label>
+                    <textarea id="reason" name="reason" class="form-textarea" rows="3"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeNewLeaveModal()" style="flex: 1;">
+                        Anuluj
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submit-leave-btn" style="flex: 1;">
+                        Wyślij wniosek
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Approve/Reject Modal -->
+    <div id="approve-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="approve-modal-title">Zatwierdź wniosek</h2>
+                <button class="modal-close" onclick="closeApproveModal()">&times;</button>
+            </div>
+
+            <div id="approve-alert-container"></div>
+
+            <div id="request-details" style="margin-bottom: 1.5rem; padding: 1rem; background-color: var(--light-bg); border-radius: 0.375rem;">
+                <!-- Request details will be shown here -->
+            </div>
+
+            <form id="approve-form">
+                <input type="hidden" id="approve-request-id">
+                <input type="hidden" id="approve-action">
+
+                <div class="form-group" id="rejection-reason-group" style="display: none;">
+                    <label for="rejection-reason" class="form-label">Powód odrzucenia *</label>
+                    <textarea id="rejection-reason" class="form-textarea" rows="3"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeApproveModal()" style="flex: 1;">
+                        Anuluj
+                    </button>
+                    <button type="submit" class="btn" id="approve-submit-btn" style="flex: 1;">
+                        Zatwierdź
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        let currentUser = null;
+        let currentView = 'my';
+
+        // Check authentication
+        if (!api.isAuthenticated()) {
+            window.location.href = '/login';
+        }
+
+        // Logout function
+        function logout() {
+            api.logout();
+        }
+
+        // Show alert
+        function showAlert(message, type = 'error', containerId = 'alert-container') {
+            const container = document.getElementById(containerId);
+            const alertClass = type === 'error' ? 'alert-error' : 'alert-success';
+            container.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pl-PL');
+        }
+
+        // Get status badge
+        function getStatusBadge(status) {
+            const badges = {
+                pending: '<span class="badge badge-pending">Oczekujące</span>',
+                approved: '<span class="badge badge-approved">Zatwierdzone</span>',
+                rejected: '<span class="badge badge-rejected">Odrzucone</span>',
+                cancelled: '<span class="badge badge-cancelled">Anulowane</span>',
+            };
+            return badges[status] || status;
+        }
+
+        // Get leave type name
+        function getLeaveTypeName(type) {
+            const types = {
+                annual: 'Wypoczynkowy',
+                sick: 'Zwolnienie',
+                unpaid: 'Bezpłatny',
+                maternity: 'Macierzyński',
+                paternity: 'Ojcowski',
+                compassionate: 'Okolicznościowy',
+                other: 'Inny',
+            };
+            return types[type] || type;
+        }
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                currentUser = await api.getCurrentUser();
+                document.getElementById('user-name').textContent = currentUser.full_name;
+                document.getElementById('user-role').textContent = currentUser.role.toUpperCase();
+
+                // Show/hide manager/admin buttons
+                if (currentUser.role === 'manager' || currentUser.role === 'admin') {
+                    document.getElementById('pending-btn').style.display = 'inline-block';
+                    document.getElementById('all-requests-btn').style.display = 'inline-block';
+                }
+            } catch (error) {
+                showAlert('Błąd ładowania danych użytkownika');
+                api.logout();
+            }
+        }
+
+        // Load user stats
+        async function loadUserStats() {
+            try {
+                const stats = await api.getUserStats();
+                const statsHtml = `
+                    <div class="stat-card">
+                        <div class="stat-card-header">Pozostałe dni urlopu</div>
+                        <div class="stat-card-value">${stats.annual_leave_remaining.toFixed(1)}</div>
+                        <div class="stat-card-icon">🏖️</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">Pozostałe zwolnienia</div>
+                        <div class="stat-card-value">${stats.sick_leave_remaining.toFixed(1)}</div>
+                        <div class="stat-card-icon">🏥</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">Wnioski oczekujące</div>
+                        <div class="stat-card-value">${stats.pending_requests}</div>
+                        <div class="stat-card-icon">⏳</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">Nadchodzące urlopy</div>
+                        <div class="stat-card-value">${stats.upcoming_leaves}</div>
+                        <div class="stat-card-icon">📅</div>
+                    </div>
+                `;
+                document.getElementById('user-stats').innerHTML = statsHtml;
+            } catch (error) {
+                console.error('Error loading user stats:', error);
+            }
+        }
+
+        // Load admin stats
+        async function loadAdminStats() {
+            if (currentUser.role !== 'manager' && currentUser.role !== 'admin') {
+                return;
+            }
+
+            try {
+                const stats = await api.getDashboardStats();
+                const statsHtml = `
+                    <div class="stat-card">
+                        <div class="stat-card-header">Wszyscy pracownicy</div>
+                        <div class="stat-card-value">${stats.total_employees}</div>
+                        <div class="stat-card-icon">👥</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">Do zatwierdzenia</div>
+                        <div class="stat-card-value">${stats.pending_requests}</div>
+                        <div class="stat-card-icon">⏳</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">Zatwierdzone</div>
+                        <div class="stat-card-value">${stats.approved_requests}</div>
+                        <div class="stat-card-icon">✅</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">Odrzucone</div>
+                        <div class="stat-card-value">${stats.rejected_requests}</div>
+                        <div class="stat-card-icon">❌</div>
+                    </div>
+                `;
+                document.getElementById('admin-stats').innerHTML = statsHtml;
+                document.getElementById('admin-stats').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading admin stats:', error);
+            }
+        }
+
+        // Load my requests
+        async function loadMyRequests() {
+            currentView = 'my';
+            document.getElementById('table-title').textContent = 'Moje wnioski urlopowe';
+            showLoading();
+
+            try {
+                const requests = await api.getMyLeaveRequests();
+                displayRequests(requests);
+            } catch (error) {
+                showAlert('Błąd ładowania wniosków');
+                hideLoading();
+            }
+        }
+
+        // Load pending requests
+        async function loadPendingRequests() {
+            currentView = 'pending';
+            document.getElementById('table-title').textContent = 'Wnioski do zatwierdzenia';
+            showLoading();
+
+            try {
+                const requests = await api.getPendingRequests();
+                displayRequests(requests);
+            } catch (error) {
+                showAlert('Błąd ładowania wniosków do zatwierdzenia');
+                hideLoading();
+            }
+        }
+
+        // Load all requests
+        async function loadAllRequests() {
+            currentView = 'all';
+            document.getElementById('table-title').textContent = 'Wszystkie wnioski';
+            showLoading();
+
+            try {
+                const requests = await api.getLeaveRequests();
+                displayRequests(requests);
+            } catch (error) {
+                showAlert('Błąd ładowania wszystkich wniosków');
+                hideLoading();
+            }
+        }
+
+        // Apply filter
+        function applyFilter() {
+            if (currentView === 'my') loadMyRequests();
+            else if (currentView === 'pending') loadPendingRequests();
+            else if (currentView === 'all') loadAllRequests();
+        }
+
+        // Display requests
+        function displayRequests(requests) {
+            hideLoading();
+
+            if (requests.length === 0) {
+                document.getElementById('requests-container').classList.add('hidden');
+                document.getElementById('no-requests').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('no-requests').classList.add('hidden');
+            document.getElementById('requests-container').classList.remove('hidden');
+
+            const tbody = document.getElementById('requests-tbody');
+            tbody.innerHTML = '';
+
+            requests.forEach(request => {
+                const canApprove = currentView === 'pending' && (currentUser.role === 'manager' || currentUser.role === 'admin');
+                const canCancel = request.status === 'pending' && request.user_id === currentUser.id;
+
+                const row = `
+                    <tr>
+                        <td>${getLeaveTypeName(request.leave_type)}</td>
+                        <td>${formatDate(request.start_date)}</td>
+                        <td>${formatDate(request.end_date)}</td>
+                        <td>${request.days_count}</td>
+                        <td>${getStatusBadge(request.status)}</td>
+                        <td>${formatDate(request.created_at)}</td>
+                        <td>
+                            ${canApprove ? `
+                                <button class="btn btn-success btn-small" onclick="openApproveModal(${request.id}, true)">
+                                    Zatwierdź
+                                </button>
+                                <button class="btn btn-danger btn-small" onclick="openApproveModal(${request.id}, false)">
+                                    Odrzuć
+                                </button>
+                            ` : ''}
+                            ${canCancel ? `
+                                <button class="btn btn-danger btn-small" onclick="cancelRequest(${request.id})">
+                                    Anuluj
+                                </button>
+                            ` : ''}
+                            ${request.rejection_reason ? `
+                                <button class="btn btn-secondary btn-small" onclick="alert('Powód odrzucenia: ${request.rejection_reason}')">
+                                    Powód
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('requests-container').classList.add('hidden');
+            document.getElementById('no-requests').classList.add('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        // New leave modal
+        function openNewLeaveModal() {
+            document.getElementById('new-leave-modal').classList.add('active');
+            // Set min date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('start-date').min = today;
+            document.getElementById('end-date').min = today;
+        }
+
+        function closeNewLeaveModal() {
+            document.getElementById('new-leave-modal').classList.remove('active');
+            document.getElementById('new-leave-form').reset();
+        }
+
+        // Submit new leave request
+        document.getElementById('new-leave-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                leave_type: document.getElementById('leave-type').value,
+                start_date: new Date(document.getElementById('start-date').value).toISOString(),
+                end_date: new Date(document.getElementById('end-date').value).toISOString(),
+                reason: document.getElementById('reason').value || null,
+            };
+
+            const submitBtn = document.getElementById('submit-leave-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Wysyłanie...';
+
+            try {
+                await api.createLeaveRequest(formData);
+                showAlert('Wniosek urlopowy został wysłany!', 'success');
+                closeNewLeaveModal();
+                loadMyRequests();
+                loadUserStats();
+            } catch (error) {
+                showAlert(error.message || 'Błąd tworzenia wniosku', 'error', 'leave-alert-container');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Wyślij wniosek';
+            }
+        });
+
+        // Approve/Reject modal
+        async function openApproveModal(requestId, approve) {
+            try {
+                const request = await api.getLeaveRequest(requestId);
+
+                document.getElementById('approve-request-id').value = requestId;
+                document.getElementById('approve-action').value = approve ? 'approve' : 'reject';
+
+                const modalTitle = approve ? 'Zatwierdź wniosek' : 'Odrzuć wniosek';
+                document.getElementById('approve-modal-title').textContent = modalTitle;
+
+                const detailsHtml = `
+                    <div><strong>Pracownik:</strong> ${request.user?.full_name || 'N/A'}</div>
+                    <div><strong>Typ:</strong> ${getLeaveTypeName(request.leave_type)}</div>
+                    <div><strong>Od:</strong> ${formatDate(request.start_date)}</div>
+                    <div><strong>Do:</strong> ${formatDate(request.end_date)}</div>
+                    <div><strong>Dni:</strong> ${request.days_count}</div>
+                    ${request.reason ? `<div><strong>Powód:</strong> ${request.reason}</div>` : ''}
+                `;
+                document.getElementById('request-details').innerHTML = detailsHtml;
+
+                const submitBtn = document.getElementById('approve-submit-btn');
+                const rejectionGroup = document.getElementById('rejection-reason-group');
+
+                if (approve) {
+                    submitBtn.className = 'btn btn-success';
+                    submitBtn.textContent = 'Zatwierdź';
+                    rejectionGroup.style.display = 'none';
+                } else {
+                    submitBtn.className = 'btn btn-danger';
+                    submitBtn.textContent = 'Odrzuć';
+                    rejectionGroup.style.display = 'block';
+                }
+
+                document.getElementById('approve-modal').classList.add('active');
+            } catch (error) {
+                showAlert('Błąd ładowania szczegółów wniosku');
+            }
+        }
+
+        function closeApproveModal() {
+            document.getElementById('approve-modal').classList.remove('active');
+            document.getElementById('approve-form').reset();
+        }
+
+        // Submit approve/reject
+        document.getElementById('approve-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const requestId = document.getElementById('approve-request-id').value;
+            const approve = document.getElementById('approve-action').value === 'approve';
+            const rejectionReason = document.getElementById('rejection-reason').value;
+
+            if (!approve && !rejectionReason) {
+                showAlert('Podaj powód odrzucenia', 'error', 'approve-alert-container');
+                return;
+            }
+
+            const submitBtn = document.getElementById('approve-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Przetwarzanie...';
+
+            try {
+                await api.approveLeaveRequest(requestId, approve, rejectionReason);
+                showAlert(`Wniosek został ${approve ? 'zatwierdzony' : 'odrzucony'}!`, 'success');
+                closeApproveModal();
+                loadPendingRequests();
+                loadAdminStats();
+            } catch (error) {
+                showAlert(error.message || 'Błąd przetwarzania wniosku', 'error', 'approve-alert-container');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = approve ? 'Zatwierdź' : 'Odrzuć';
+            }
+        });
+
+        // Cancel request
+        async function cancelRequest(requestId) {
+            if (!confirm('Czy na pewno chcesz anulować ten wniosek?')) {
+                return;
+            }
+
+            try {
+                await api.cancelLeaveRequest(requestId);
+                showAlert('Wniosek został anulowany', 'success');
+                loadMyRequests();
+                loadUserStats();
+            } catch (error) {
+                showAlert(error.message || 'Błąd anulowania wniosku');
+            }
+        }
+
+        // Initialize
+        async function init() {
+            await loadUserInfo();
+            await loadUserStats();
+            await loadAdminStats();
+            await loadMyRequests();
+        }
+
+        init();
+    </script>
+</body>
+</html>
