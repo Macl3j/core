@@ -14,7 +14,7 @@ icalendar==5.0.11
 # Reports generation
 openpyxl==3.1.2
 reportlab==4.0.7
-pandas==2.1.3
+# pandas removed - using built-in csv module instead
 
 # Email templates
 jinja2==3.1.2

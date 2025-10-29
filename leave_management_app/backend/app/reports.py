@@ -1,8 +1,8 @@
 """Reports generation module for leave management system."""
 from datetime import datetime
 from typing import List
-from io import BytesIO
-import pandas as pd
+from io import BytesIO, StringIO
+import csv
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from reportlab.lib import colors
@@ -48,12 +48,27 @@ def generate_csv_report(leave_requests: List[LeaveRequest]) -> str:
         leave_requests: List of LeaveRequest objects
 
     Returns:
-        CSV data as string
+        CSV data as string with UTF-8 BOM
     """
-    # Prepare data
-    data = []
+    # Create StringIO buffer
+    output = StringIO()
+
+    # Define CSV headers
+    headers = [
+        'ID', 'Pracownik', 'Email', 'Dział', 'Typ urlopu',
+        'Data rozpoczęcia', 'Data zakończenia', 'Liczba dni',
+        'Status', 'Powód', 'Zatwierdzający', 'Data zatwierdzenia', 'Data utworzenia'
+    ]
+
+    # Create CSV writer with UTF-8 encoding
+    writer = csv.DictWriter(output, fieldnames=headers, quoting=csv.QUOTE_MINIMAL)
+
+    # Write header
+    writer.writeheader()
+
+    # Write data rows
     for req in leave_requests:
-        data.append({
+        writer.writerow({
             'ID': req.id,
             'Pracownik': req.user.full_name if req.user else 'N/A',
             'Email': req.user.email if req.user else 'N/A',
@@ -69,11 +84,10 @@ def generate_csv_report(leave_requests: List[LeaveRequest]) -> str:
             'Data utworzenia': req.created_at.strftime('%Y-%m-%d %H:%M'),
         })
 
-    # Create DataFrame
-    df = pd.DataFrame(data)
+    # Add UTF-8 BOM for Excel compatibility
+    csv_content = '\ufeff' + output.getvalue()
 
-    # Convert to CSV
-    return df.to_csv(index=False, encoding='utf-8-sig')
+    return csv_content
 
 
 def generate_excel_report(leave_requests: List[LeaveRequest]) -> BytesIO:
