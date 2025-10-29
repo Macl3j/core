@@ -15,8 +15,13 @@ class APIClient {
             'Content-Type': 'application/json',
         };
 
-        if (includeAuth && this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
+        if (includeAuth) {
+            // Always read token from localStorage to ensure it's fresh
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+                this.token = token; // Sync internal token
+            }
         }
 
         return headers;
@@ -81,9 +86,11 @@ class APIClient {
     }
 
     async getCurrentUser() {
+        const headers = this.getHeaders();
+        console.log('Getting current user with headers:', headers);
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
             method: 'GET',
-            headers: this.getHeaders(),
+            headers: headers,
         });
 
         const user = await this.handleResponse(response);
