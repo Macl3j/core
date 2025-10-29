@@ -84,9 +84,29 @@ def root():
 
 
 # Serve frontend static files
-frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend")
-if os.path.exists(frontend_path):
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+# Try to find frontend directory - works both locally and in Docker
+def find_frontend_path():
+    """Find frontend directory path that works in both local and Docker environments."""
+    possible_paths = [
+        # Docker: /app/frontend (when backend is in /app/app)
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend"),
+        # Local: /path/to/project/frontend (when backend is in backend/app)
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend"),
+    ]
+
+    for path in possible_paths:
+        abs_path = os.path.abspath(path)
+        if os.path.exists(abs_path):
+            print(f"Frontend found at: {abs_path}")
+            return abs_path
+
+    print("WARNING: Frontend directory not found!")
+    return None
+
+frontend_path = find_frontend_path()
+
+if frontend_path:
+    # Mount static files AFTER defining routes to avoid conflicts
 
     @app.get("/")
     def serve_frontend():
@@ -94,7 +114,7 @@ if os.path.exists(frontend_path):
         index_path = os.path.join(frontend_path, "index.html")
         if os.path.exists(index_path):
             return FileResponse(index_path)
-        return {"message": "Frontend not found. Please check frontend directory."}
+        raise HTTPException(status_code=404, detail="Frontend index not found")
 
     @app.get("/login")
     def serve_login():
@@ -102,7 +122,7 @@ if os.path.exists(frontend_path):
         login_path = os.path.join(frontend_path, "login.html")
         if os.path.exists(login_path):
             return FileResponse(login_path)
-        return {"message": "Login page not found"}
+        raise HTTPException(status_code=404, detail="Login page not found")
 
     @app.get("/dashboard")
     def serve_dashboard():
@@ -110,7 +130,19 @@ if os.path.exists(frontend_path):
         dashboard_path = os.path.join(frontend_path, "dashboard.html")
         if os.path.exists(dashboard_path):
             return FileResponse(dashboard_path)
-        return {"message": "Dashboard page not found"}
+        raise HTTPException(status_code=404, detail="Dashboard page not found")
+
+    # Mount static files for CSS, JS, etc.
+    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+else:
+    @app.get("/")
+    @app.get("/login")
+    @app.get("/dashboard")
+    def frontend_not_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Frontend files not available. Please check installation."
+        )
 
 
 if __name__ == "__main__":
