@@ -618,36 +618,144 @@
             }
         }
 
-        // Export functions
-        function exportMyCalendar() {
-            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/leaves/export/calendar`;
-            window.open(url, '_blank');
+        // Export functions with authentication
+        async function exportMyCalendar() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${api.API_BASE_URL || 'http://localhost:8000/api'}/leaves/export/calendar`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'my-leave-calendar.ics';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showAlert('Kalendarz został pobrany!', 'success');
+            } catch (error) {
+                showAlert('Błąd pobierania kalendarza: ' + error.message);
+            }
         }
 
-        function exportMySummaryPDF() {
-            const year = new Date().getFullYear();
-            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/my-summary/pdf?year=${year}`;
-            window.open(url, '_blank');
+        async function exportMySummaryPDF() {
+            try {
+                const year = new Date().getFullYear();
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/my-summary/pdf?year=${year}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `leave-summary-${year}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showAlert('Raport został pobrany!', 'success');
+            } catch (error) {
+                showAlert('Błąd pobierania raportu: ' + error.message);
+            }
         }
 
-        function exportTeamCalendar() {
-            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/leaves/export/team-calendar`;
-            window.open(url, '_blank');
+        async function exportTeamCalendar() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${api.API_BASE_URL || 'http://localhost:8000/api'}/leaves/export/team-calendar`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'team-leave-calendar.ics';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showAlert('Kalendarz zespołu został pobrany!', 'success');
+            } catch (error) {
+                showAlert('Błąd pobierania kalendarza: ' + error.message);
+            }
         }
 
-        function exportLeavesCsv() {
-            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/csv`;
-            window.open(url, '_blank');
+        async function exportLeavesCsv() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/csv`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'leave-requests.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showAlert('Raport CSV został pobrany!', 'success');
+            } catch (error) {
+                showAlert('Błąd pobierania raportu: ' + error.message);
+            }
         }
 
-        function exportLeavesExcel() {
-            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/excel`;
-            window.open(url, '_blank');
+        async function exportLeavesExcel() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/excel`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'leave-requests.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showAlert('Raport Excel został pobrany!', 'success');
+            } catch (error) {
+                showAlert('Błąd pobierania raportu: ' + error.message);
+            }
         }
 
-        function exportLeavesPdf() {
-            const url = `${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/pdf`;
-            window.open(url, '_blank');
+        async function exportLeavesPdf() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${api.API_BASE_URL || 'http://localhost:8000/api'}/reports/leaves/pdf`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'leave-requests.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showAlert('Raport PDF został pobrany!', 'success');
+            } catch (error) {
+                showAlert('Błąd pobierania raportu: ' + error.message);
+            }
         }
 
         // Initialize
