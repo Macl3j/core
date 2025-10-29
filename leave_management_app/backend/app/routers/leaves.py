@@ -1,5 +1,5 @@
 """Leave requests router for managing leave requests."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
@@ -45,8 +45,11 @@ def create_leave_request(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new leave request."""
-    # Validate dates
-    if leave_data.start_date < datetime.now():
+    # Validate dates - compare dates only, not times
+    today = date.today()
+    start_date_only = leave_data.start_date.date() if isinstance(leave_data.start_date, datetime) else leave_data.start_date
+
+    if start_date_only < today:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot request leave in the past"
