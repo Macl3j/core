@@ -219,8 +219,15 @@
         let currentView = 'my';
 
         // Check authentication
+        console.log('Dashboard loading...');
+        console.log('Token in localStorage:', localStorage.getItem('access_token'));
+        console.log('isAuthenticated:', api.isAuthenticated());
+
         if (!api.isAuthenticated()) {
+            console.log('Not authenticated, redirecting to login');
             window.location.href = '/login';
+        } else {
+            console.log('Authenticated successfully');
         }
 
         // Logout function

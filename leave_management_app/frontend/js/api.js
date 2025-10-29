@@ -49,7 +49,10 @@ class APIClient {
     }
 
     isAuthenticated() {
-        return !!this.token;
+        // Always check localStorage directly to ensure fresh value
+        const token = localStorage.getItem('access_token');
+        this.token = token; // Sync internal token
+        return !!token;
     }
 
     // Authentication endpoints

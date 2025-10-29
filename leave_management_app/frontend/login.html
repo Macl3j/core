@@ -180,12 +180,18 @@
 
             try {
                 await api.login(username, password);
+                console.log('Login successful, token saved');
+                console.log('Token in localStorage:', localStorage.getItem('access_token'));
+                console.log('isAuthenticated:', api.isAuthenticated());
+
                 showAlert('Zalogowano pomyślnie!', 'success');
 
                 setTimeout(() => {
+                    console.log('Redirecting to dashboard...');
                     window.location.href = '/dashboard';
                 }, 500);
             } catch (error) {
+                console.error('Login error:', error);
                 showAlert(error.message || 'Błąd logowania. Sprawdź dane i spróbuj ponownie.');
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Zaloguj się';
