@@ -42,7 +42,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
+    print(f"[AUTH] Creating JWT with data: {to_encode}")
+    print(f"[AUTH] Using SECRET_KEY: {SECRET_KEY[:10]}...")
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    print(f"[AUTH] Generated JWT token: {encoded_jwt[:50]}...")
     return encoded_jwt
 
 
@@ -52,10 +55,13 @@ def decode_access_token(token: str) -> Optional[TokenData]:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: int = payload.get("sub")
         username: str = payload.get("username")
+        print(f"[AUTH] JWT payload: sub={user_id}, username={username}")
         if user_id is None:
+            print("[AUTH] JWT decode failed - user_id is None")
             return None
         return TokenData(user_id=user_id, username=username)
-    except JWTError:
+    except JWTError as e:
+        print(f"[AUTH] JWT decode error: {str(e)}")
         return None
 
 
@@ -74,6 +80,8 @@ async def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Get the current authenticated user from JWT token."""
+    print(f"[AUTH] Received token: {token[:50]}..." if len(token) > 50 else f"[AUTH] Received token: {token}")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -81,19 +89,25 @@ async def get_current_user(
     )
 
     token_data = decode_access_token(token)
+    print(f"[AUTH] Decoded token data: {token_data}")
+
     if token_data is None or token_data.user_id is None:
+        print("[AUTH] Token validation failed - invalid token data")
         raise credentials_exception
 
     user = db.query(User).filter(User.id == token_data.user_id).first()
     if user is None:
+        print(f"[AUTH] User not found for ID: {token_data.user_id}")
         raise credentials_exception
 
     if not user.is_active:
+        print(f"[AUTH] User {user.username} is inactive")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
         )
 
+    print(f"[AUTH] Successfully authenticated user: {user.username}")
     return user
 
 
